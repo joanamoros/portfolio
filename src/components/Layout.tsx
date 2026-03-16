@@ -72,7 +72,7 @@ export default function Layout({ children }: LayoutProps) {
             <FaLinkedin />
           </a>
         </div>
-        <p>© 2025 Joan Amorós. Todos los derechos reservados.</p>
+        <p>© 2026 Joan Amorós. Todos los derechos reservados.</p>
       </footer>
     </>
   );
