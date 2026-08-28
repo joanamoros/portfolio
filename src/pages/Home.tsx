@@ -5,6 +5,7 @@ import { SiThreads } from "react-icons/si";
 /* import { GiClash, GiBrawl } from "react-icons/gi"; */
 import emailjs from "@emailjs/browser";
 import Reveal from "../components/Reveal";
+import avatarImg from "../assets/avatar.jpg";
 
 // ── Tech stack ──────────────────────────────────────────────────────────────
 const techStack = [
@@ -139,10 +140,10 @@ export default function Home() {
     setFormState("sending");
     try {
       await emailjs.sendForm(
-        "YOUR_SERVICE_ID",
-        "YOUR_TEMPLATE_ID",
+        "service_2zj7e45",
+        "template_8a4z64g",
         formRef.current,
-        "YOUR_PUBLIC_KEY"
+        "jB5-_FJFa1Q98qkUN"
       );
       setFormState("ok");
       formRef.current.reset();
@@ -156,6 +157,7 @@ export default function Home() {
       {/* ── HERO ─────────────────────────────────────────────────────────── */}
       <section id="inicio" className="hero-section">
         <div className="hero-content fade-in-up">
+          <img src={avatarImg} alt="Joan Amorós" className="hero-avatar" />
           <p className="hero-eyebrow">Hola, soy</p>
           <h1>
             Joan <span className="gradient-text">Amorós</span>

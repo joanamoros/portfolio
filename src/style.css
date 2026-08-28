@@ -255,6 +255,26 @@ body.dark .theme-toggle:hover {
   z-index: 1;
 }
 
+.hero-avatar {
+  display: block;
+  width: 132px;
+  height: 132px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin: 0 auto var(--space-lg);
+  border: 3px solid;
+}
+
+body.light .hero-avatar {
+  border-color: var(--light-card-bg);
+  box-shadow: var(--shadow-heavy);
+}
+
+body.dark .hero-avatar {
+  border-color: var(--dark-card-bg);
+  box-shadow: var(--shadow-heavy);
+}
+
 .hero-eyebrow {
   font-size: 1rem;
   font-weight: 500;
