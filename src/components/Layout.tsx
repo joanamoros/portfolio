@@ -1,32 +1,36 @@
 // src/components/Layout.tsx
-import { useEffect, useState } from "react";
-import { FaGithub, FaLinkedin, FaSun, FaMoon, FaBars, FaTimes, FaArrowUp } from "react-icons/fa";
+import { useEffect, useRef, useState } from "react";
+import { FaGithub, FaLinkedin, FaSun, FaMoon, FaArrowUp } from "react-icons/fa";
 import { useTheme } from "../contexts/ThemeContext";
 
 interface LayoutProps {
   children: React.ReactNode;
 }
 
+const navLinks = [
+  { href: "#inicio",      label: "Inicio" },
+  { href: "#sobre-mi",    label: "Sobre mí" },
+  { href: "#habilidades", label: "Stack" },
+  { href: "#experiencia", label: "Experiencia" },
+  { href: "#proyectos",   label: "Proyectos" },
+  { href: "#contacto",    label: "Contacto" },
+];
+
 export default function Layout({ children }: LayoutProps) {
   const { theme, toggleTheme } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("inicio");
-  const [scrollProgress, setScrollProgress] = useState(0);
+  const [scrolled, setScrolled] = useState(false);
   const [showBackToTop, setShowBackToTop] = useState(false);
-
-  const navLinks = [
-    { href: "#inicio",      label: "Inicio" },
-    { href: "#sobre-mi",    label: "Sobre mí" },
-    { href: "#habilidades", label: "Stack" },
-    { href: "#experiencia", label: "Experiencia" },
-    { href: "#proyectos",   label: "Proyectos" },
-    { href: "#contacto",    label: "Contacto" },
-  ];
+  const progressRef = useRef<HTMLDivElement>(null);
+  const menuBtnRef = useRef<HTMLButtonElement>(null);
+  const firstSidebarLinkRef = useRef<HTMLAnchorElement>(null);
 
   const closeSidebar = () => setSidebarOpen(false);
 
   const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    window.scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" });
   };
 
   // Resalta el enlace de navegación de la sección visible en pantalla
@@ -49,105 +53,144 @@ export default function Layout({ children }: LayoutProps) {
     return () => observer.disconnect();
   }, []);
 
-  // Barra de progreso de scroll + botón "volver arriba"
+  // Barra de progreso (transform, no width → sin recalcular layout) + estados ligados al scroll
   useEffect(() => {
-    const handleScroll = () => {
+    let frame = 0;
+    const update = () => {
+      frame = 0;
       const scrollTop = window.scrollY;
       const docHeight = document.documentElement.scrollHeight - window.innerHeight;
-      setScrollProgress(docHeight > 0 ? (scrollTop / docHeight) * 100 : 0);
-      setShowBackToTop(scrollTop > 480);
+      const progress = docHeight > 0 ? scrollTop / docHeight : 0;
+      if (progressRef.current) {
+        progressRef.current.style.transform = `scaleX(${progress})`;
+      }
+      setScrolled(scrollTop > 8);
+      setShowBackToTop(scrollTop > 640);
+    };
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(update);
     };
 
-    handleScroll();
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
+    update();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (frame) cancelAnimationFrame(frame);
+    };
+  }, []);
+
+  // Menú móvil: Escape para cerrar, bloqueo de scroll y gestión del foco
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSidebarOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    firstSidebarLinkRef.current?.focus();
+    const menuBtn = menuBtnRef.current;
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+      menuBtn?.focus();
+    };
+  }, [sidebarOpen]);
+
+  // Si se agranda la ventana con el menú abierto, se cierra
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 769px)");
+    const onChange = () => mq.matches && setSidebarOpen(false);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
   }, []);
 
   return (
     <>
-      {/* Barra de progreso de lectura */}
-      <div className="scroll-progress" style={{ width: `${scrollProgress}%` }} />
+      <a href="#contenido" className="skip-link" inert={sidebarOpen}>Saltar al contenido</a>
 
-      <header className="nav-header">
+      {/* Barra de progreso de lectura */}
+      <div className="scroll-progress" ref={progressRef} aria-hidden="true" />
+
+      <header className={`nav-header ${scrolled ? "nav-header--scrolled" : ""}`}>
         <div className="nav-container">
-          {/* Botón hamburguesa (solo visible en móvil <480px) */}
           <button
+            ref={menuBtnRef}
             className="mobile-menu-btn"
-            onClick={() => setSidebarOpen(true)}
-            aria-label="Abrir menú"
+            onClick={() => setSidebarOpen((open) => !open)}
+            aria-label={sidebarOpen ? "Cerrar menú" : "Abrir menú"}
+            aria-expanded={sidebarOpen}
+            aria-controls="menu-movil"
           >
-            <FaBars />
+            <span className={`burger ${sidebarOpen ? "burger--open" : ""}`} aria-hidden="true">
+              <span />
+              <span />
+            </span>
           </button>
 
-          {/* Logo - centrado en móvil, izquierda en desktop */}
-          <a href="#inicio" className="logo">
-            <span className="logo-first">Joan</span> <span className="logo-last">Amorós</span>
+          <a href="#inicio" className="logo" aria-label="Joan Amorós, ir al inicio">
+            <span className="logo-mark" aria-hidden="true">JA</span>
+            <span className="logo-text">Joan Amorós</span>
           </a>
 
-          {/* Navegación desktop (visible solo en desktop) */}
-          <nav className="nav-links">
-            {navLinks.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                className={activeSection === link.href.slice(1) ? "active" : undefined}
-                aria-current={activeSection === link.href.slice(1) ? "page" : undefined}
-              >
-                {link.label}
-              </a>
-            ))}
+          <nav className="nav-links" aria-label="Principal">
+            {navLinks.map((link) => {
+              const isActive = activeSection === link.href.slice(1);
+              return (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  className={isActive ? "active" : undefined}
+                  aria-current={isActive ? "location" : undefined}
+                >
+                  {link.label}
+                </a>
+              );
+            })}
           </nav>
 
-          {/* Botón tema (siempre visible a la derecha) */}
           <button
             onClick={toggleTheme}
             className="theme-toggle"
             aria-label={`Cambiar a modo ${theme === "light" ? "oscuro" : "claro"}`}
+            title={`Modo ${theme === "light" ? "oscuro" : "claro"}`}
           >
-            {theme === "light" ? <FaMoon /> : <FaSun />}
+            <span className={`theme-icon ${theme === "light" ? "is-visible" : ""}`} aria-hidden="true"><FaMoon /></span>
+            <span className={`theme-icon ${theme === "dark" ? "is-visible" : ""}`} aria-hidden="true"><FaSun /></span>
           </button>
         </div>
       </header>
 
-      {/* Sidebar lateral (solo para móviles) */}
-      <>
-        {/* Overlay (fondo oscuro al abrir el sidebar) */}
-        <div
-          className={`sidebar-overlay ${sidebarOpen ? "sidebar-overlay--open" : ""}`}
-          onClick={closeSidebar}
-        />
-
-        {/* Sidebar */}
-        <div className={`sidebar ${sidebarOpen ? "sidebar--open" : ""}`}>
-          <div className="sidebar-header">
-            <button
-              className="sidebar-close-btn"
-              onClick={closeSidebar}
-              aria-label="Cerrar menú"
-            >
-              <FaTimes />
-            </button>
-          </div>
-          <nav className="sidebar-nav">
-            {navLinks.map((link) => (
+      {/* Menú lateral (móvil) */}
+      <div
+        className={`sidebar-overlay ${sidebarOpen ? "sidebar-overlay--open" : ""}`}
+        onClick={closeSidebar}
+        aria-hidden="true"
+      />
+      <div
+        id="menu-movil"
+        className={`sidebar ${sidebarOpen ? "sidebar--open" : ""}`}
+        inert={!sidebarOpen}
+      >
+        <nav className="sidebar-nav" aria-label="Menú móvil">
+          {navLinks.map((link, i) => {
+            const isActive = activeSection === link.href.slice(1);
+            return (
               <a
                 key={link.href}
+                ref={i === 0 ? firstSidebarLinkRef : undefined}
                 href={link.href}
                 onClick={closeSidebar}
-                className={activeSection === link.href.slice(1) ? "active" : undefined}
-                aria-current={activeSection === link.href.slice(1) ? "page" : undefined}
+                className={isActive ? "active" : undefined}
+                aria-current={isActive ? "location" : undefined}
+                style={{ "--i": i } as React.CSSProperties}
               >
+                <span className="sidebar-index" aria-hidden="true">{String(i + 1).padStart(2, "0")}</span>
                 {link.label}
               </a>
-            ))}
-          </nav>
-        </div>
-      </>
-
-      <main>{children}</main>
-
-      <footer className="footer">
-        <div className="footer-links">
+            );
+          })}
+        </nav>
+        <div className="sidebar-footer">
           <a href="https://github.com/joanamoros" target="_blank" rel="noopener noreferrer" aria-label="GitHub">
             <FaGithub />
           </a>
@@ -155,7 +198,23 @@ export default function Layout({ children }: LayoutProps) {
             <FaLinkedin />
           </a>
         </div>
-        <p>© 2026 Joan Amorós. Todos los derechos reservados.</p>
+      </div>
+
+      <main id="contenido" inert={sidebarOpen}>{children}</main>
+
+      <footer className="footer" inert={sidebarOpen}>
+        <div className="footer-inner">
+          <p className="footer-name">Joan Amorós</p>
+          <p className="footer-meta">© 2026 · Diseñado y desarrollado con React y Vite</p>
+          <div className="footer-links">
+            <a href="https://github.com/joanamoros" target="_blank" rel="noopener noreferrer" aria-label="GitHub">
+              <FaGithub />
+            </a>
+            <a href="https://www.linkedin.com/in/joan-amor%C3%B3s-ram%C3%ADrez-645a24224/" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">
+              <FaLinkedin />
+            </a>
+          </div>
+        </div>
       </footer>
 
       {/* Botón flotante "volver arriba" */}
